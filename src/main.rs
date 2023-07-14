@@ -1,4 +1,7 @@
-#![allow(clippy::let_unit_value)] // false positive: https://github.com/SergioBenitez/Rocket/issues/2568
+#![allow(
+    clippy::let_unit_value, // false positive: https://github.com/SergioBenitez/Rocket/issues/2568
+    clippy::no_effect_underscore_binding,
+)]
 
 mod script;
 
@@ -38,11 +41,12 @@ async fn call(
 ) -> Result<RawJson<String>, script::Error> {
     static COUNT: AtomicUsize = AtomicUsize::new(0);
 
-    async fn unique_rs() -> String {
+    fn unique_rs() -> String {
         format!("{}.rs", COUNT.fetch_add(1, Ordering::SeqCst))
     }
 
-    let file = scripts.cache.entry_by_ref(call.main.as_ref()).or_insert_with(unique_rs()).await;
+    let file =
+        scripts.cache.entry_by_ref(call.main.as_ref()).or_insert_with(async { unique_rs() }).await;
     script::execute_in(
         (&env::current_dir()?.join(CRATES), &file.into_value()),
         call.into_inner(), // keep formatting
